@@ -39,10 +39,40 @@ async function punish(message, reason) {
     { name: 'Channel', value: `<#${message.channel.id}>` }] });
 }
 
+// Spam from webhooks / apps / bots we didn't expect (they have no member to timeout)
+const botHistory = new Map(); // authorId -> [timestamps]
+async function handleBotSpam(message) {
+  const now = Date.now();
+  const list = (botHistory.get(message.author.id) ?? []).filter(t => now - t < cfg.spam.intervalMs);
+  list.push(now);
+  botHistory.set(message.author.id, list);
+  if (list.length <= cfg.spam.maxMessages && !INVITE.test(message.content)) return;
+
+  await message.delete().catch(() => {});
+  let action = 'Messages deleted';
+  if (message.webhookId) {
+    const hook = await message.fetchWebhook().catch(() => null);
+    if (hook && await hook.delete('Automod: webhook spam').then(() => true).catch(() => false))
+      action = 'Webhook deleted';
+  } else if (message.member?.kickable) {
+    await message.member.kick('Automod: bot spam').catch(() => {});
+    action = 'Bot kicked';
+  } else {
+    action += ' (spam from an app/user-installed app: turn off "Use External Apps" for @everyone)';
+  }
+  modLog(message.guild, { title: 'Bot/webhook spam', color: 0xe74c3c, fields: [
+    { name: 'Author', value: `${message.author.tag} (${message.author.id})` },
+    { name: 'Webhook ID', value: message.webhookId ?? 'n/a' },
+    { name: 'Channel', value: `<#${message.channel.id}>` }, { name: 'Action', value: action }] });
+}
+
 module.exports = {
   name: 'messageCreate',
   async execute(message) {
-    if (!cfg.enabled || !message.guild || message.author.bot || !message.member) return;
+    if (!cfg.enabled || !message.guild) return;
+    if (message.author.id === message.client.user.id) return;
+    if (message.author.bot || message.webhookId) return handleBotSpam(message);
+    if (!message.member) return;
     if (message.member.permissions.has(PermissionFlagsBits.ManageMessages)) return;
 
     const key = `${message.guild.id}:${message.author.id}`;

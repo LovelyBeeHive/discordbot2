@@ -6,7 +6,7 @@ Discord moderation bot with anti-spam automod and raid protection (discord.js v1
 1. Create an app at https://discord.com/developers/applications, add a Bot, copy the token.
 2. Under **Bot**, enable **Server Members Intent** and **Message Content Intent**.
 3. `cp .env.example .env` and fill in `DISCORD_TOKEN`, `CLIENT_ID` (and `GUILD_ID` for instant command updates).
-4. `npm install`, then `npm run deploy` (registers slash commands), then `npm start`.
+4. Paste your token into `src/index.js` (or use `.env`), run `npm install`, then `npm start`. Commands register automatically on start.
 5. Invite with scopes `bot applications.commands` and permissions: Ban, Kick, Moderate Members, Manage Messages, Manage Channels, View Channels, Send Messages.
 6. **Drag the bot's role above the roles it should moderate**, then run `/setlog #channel`.
 
